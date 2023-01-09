@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Startup Name Generator',
+      title: 'Word Generator',
       theme: ThemeData(
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.black,
@@ -35,10 +35,9 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final _suggestions = <WordPair>[];
+  final _saved = <WordPair>{};
   int _selectedIndex = 0;
-  static const List<Widget> _widgetOptions = <Widget>[
-    RandomWords(),    SavedItems(),
-  ];
 
   void _onItemTapped(int index) {
     setState(() {
@@ -46,21 +45,33 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  void _addToSaved(WordPair pair) {
+    setState(() {
+      _saved.add(pair);
+    });
+  }
+
+  void _removeFromSaved(WordPair pair) {
+    setState(() {
+      _saved.remove(pair);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Startup Name Generator'),
+        title: const Text('Word Generator'),
       ),
-      body: _homePages.elementAt(_selectedIndex),
+      body: _selectedIndex == 0 ? _buildWordPairsList() : _buildSavedList(),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: "Home",
+            icon: Icon(Icons.list),
+            label: "Words",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.list),
+            icon: Icon(Icons.favorite),
             label: "Saved",
           ),
         ],
@@ -69,186 +80,56 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-}
 
-class RandomWords extends StatefulWidget {
-  const RandomWords({Key? key}) : super(key: key);
+  Widget _buildWordPairsList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16.0),
+      itemBuilder: /*1*/ (context, i) {
+        if (i.isOdd) return const Divider();        /*2*/
 
-  @override
-  State<RandomWords> createState() => _RandomWordsState();
-}
-
-class _RandomWordsState extends State<RandomWords> {
-  final _suggestions = <WordPair>[];
-  final _saved = <WordPair>{};
-
-
-  void _goToSavedItems() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (context) {
-          return SavedItems(saved: _saved);
-        },
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Startup Name Generator'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.list),
-            onPressed: _goToSavedItems,
-            tooltip: 'Saved Suggestions',
+        final index = i ~/ 2; /*3*/
+        if (index >= _suggestions.length) {
+          _suggestions.addAll(generateWordPairs().take(10)); /*4*/
+        }
+        WordPair pair = _suggestions[index];
+        final alreadySaved = _saved.contains(pair);
+        return ListTile(
+          title: Text(
+            pair.asPascalCase,
           ),
-        ],
-      ),
-      body:
-      ListView.builder(
-        padding: const EdgeInsets.all(16.0),
-        itemBuilder: /*1*/ (context, i) {
-          if (i.isOdd) return const Divider();        /*2*/
-
-          final index = i ~/ 2; /*3*/
-          if (index >= _suggestions.length) {
-            _suggestions.addAll(generateWordPairs().take(10)); /*4*/
-          }
-
-          final alreadySaved = _saved.contains(_suggestions[index]);
-          return ListTile(
-            title: Text(
-              _suggestions[index].asPascalCase,
-              // style: _biggerFont,
-            ),
-            trailing: Icon(
-              alreadySaved ? Icons.favorite : Icons.favorite_border,
-              color: alreadySaved ? Colors.red : null,
-              semanticLabel: alreadySaved ? 'Remove from saved' : 'Save',
-            ),
-            onTap: () {
-              setState(() {
-                if (alreadySaved) {
-                  _saved.remove(_suggestions[index]);
-                }
-                else {
-                  _saved.add(_suggestions[index]);
-                }
-              });
-            },
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton (
-        onPressed: _goToSavedItems,
-        child: const Icon(Icons.list),
-      ),
-      bottomNavigationBar: NavBar(saved: _saved),
-    );
-  }
-}
-
-class SavedItems extends StatefulWidget {
-  final Set<WordPair> saved;
-  const SavedItems({Key? key, required this.saved}) : super(key: key);
-
-  @override
-  State<SavedItems> createState() => _SavedItemsState();
-}
-
-class _SavedItemsState extends State<SavedItems> {
-  final _biggerFont = const TextStyle(fontSize: 18);
-  late final tiles = widget.saved.map(
-        (pair) {
-      return ListTile(
-        title: Text(
-          pair.asPascalCase,
-          style: _biggerFont,
-        ),
-      );
-    },
-  );
-  late final divided = tiles.isNotEmpty
-      ? ListTile.divideTiles(
-    context: context,
-    tiles: tiles,
-  ).toList()
-      : <Widget>[];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Saved Suggestions'),
-      ),
-      body: ListView(children: divided),
-      bottomNavigationBar: NavBar(saved: widget.saved),
-    );
-  }
-}
-
-class NavBar extends StatefulWidget {
-  final Set<WordPair> saved;
-  const NavBar({Key? key, required this.saved}) : super(key: key);
-
-  @override
-  State<NavBar> createState() => _NavBarState();
-}
-
-class _NavBarState extends State<NavBar> {
-  int _currentIndex = 0;
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _currentIndex = index;
-
-      if (_currentIndex == 0) {
-        _goToHomePage();
-      }
-      if (_currentIndex == 1) {
-        _goToSavedItems();
-      }
-    });
-  }
-
-  void _goToSavedItems() {
-    print("we're in _goToSavedItems");
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (context) {
-          return SavedItems(saved: widget.saved);
-        },
-      ),
+          trailing: Icon(
+            alreadySaved ? Icons.favorite : Icons.favorite_border,
+            color: alreadySaved ? Colors.red : null,
+            semanticLabel: alreadySaved ? 'Remove from saved' : 'Save',
+          ),
+          onTap: () {
+            setState(() {
+              if (alreadySaved) {
+                _removeFromSaved(pair);
+              }
+              else {
+                _addToSaved(pair);
+              }
+            });
+          },
+        );
+      },
     );
   }
 
-  void _goToHomePage() {
-    print("we're in _goToHomePage");
-    Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return BottomNavigationBar(
-      items: const <BottomNavigationBarItem>[
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home),
-          label: 'Home',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.list),
-          label: 'Saved',
-        ),
-      ],
-      currentIndex: _currentIndex,
-      selectedItemColor: Colors.blue,
-      onTap: _onItemTapped,
+  Widget _buildSavedList() {
+    return ListView(
+      children: _saved.map((pair) {
+        return ListTile(
+          title: Text(pair.asPascalCase),
+          trailing: const Icon(Icons.favorite, color: Colors.red),
+          onTap: () {
+            _removeFromSaved(pair);
+          },
+        );
+      }).toList(),
     );
   }
 }
-
-
 
 
