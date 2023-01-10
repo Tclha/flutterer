@@ -22,13 +22,14 @@ class MyApp extends StatelessWidget {
           foregroundColor: Colors.white,
         ),
       ),
-      home: const HomePage(),
+      home: const HomePage(title: 'Word Generator'),
     );
   }
 }
 
 class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
+  final String title;
+  const HomePage({Key? key, required this.title}) : super(key: key);
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -38,6 +39,7 @@ class _HomePageState extends State<HomePage> {
   final _suggestions = <WordPair>[];
   final _saved = <WordPair>{};
   int _selectedIndex = 0;
+  bool _gridViewBool = false;
 
   void _onItemTapped(int index) {
     setState(() {
@@ -61,9 +63,27 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Word Generator'),
+        title: Text(widget.title),
+        actions: [
+          !_gridViewBool ?
+          IconButton(
+              onPressed: () {
+                setState(() {
+                  _gridViewBool = true;
+                });
+              },
+              icon: const Icon(Icons.grid_4x4)
+          )
+          : IconButton(
+              onPressed: () {
+                setState(() {
+                  _gridViewBool = !_gridViewBool;
+                });
+              },
+              icon: const Icon(Icons.list)),
+        ],
       ),
-      body: _selectedIndex == 0 ? _buildWordPairsList() : _buildSavedList(),
+      body: _selectedIndex == 0 ? (_gridViewBool == true ? _buildWordPairsGrid() : _buildWordPairsList()) : _buildSavedList(),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
@@ -81,6 +101,62 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _wordPairsGridItem(pair) {
+    return Center(
+      child: Text(pair.asPascalCase),
+    );
+  }
+
+  Widget _buildWordPairsGrid() {
+    return GridView.builder(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisSpacing: 0,
+        crossAxisSpacing: 0,
+        childAspectRatio: 1
+      ),
+
+      itemBuilder: (BuildContext context, int index) {
+        if (index >= _suggestions.length) {
+          _suggestions.addAll(generateWordPairs().take(100));
+        }
+        WordPair pair = _suggestions[index];
+        final alreadySaved = _saved.contains(pair);
+        return GridTile(
+          child: Column (
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              InkWell(
+                radius: 10,
+                enableFeedback: true,
+                child: Column (
+                  children: [
+                    _wordPairsGridItem(pair),
+                    Icon(
+                      alreadySaved ? Icons.favorite : Icons.favorite_border,
+                      color: alreadySaved ? Colors.red : null,
+                      semanticLabel: alreadySaved ? 'Remove from saved' : 'Save',
+                    ),
+                  ]
+                ),
+                onTap: () {
+                  setState(() {
+                    if (alreadySaved) {
+                      _removeFromSaved(pair);
+                    }
+                    else {
+                      _addToSaved(pair);
+                    }
+                  });
+                }
+              ),
+            ]
+          )
+        );
+      },
+    );
+  }
+
   Widget _buildWordPairsList() {
     return ListView.builder(
       padding: const EdgeInsets.all(16.0),
@@ -89,14 +165,12 @@ class _HomePageState extends State<HomePage> {
 
         final index = i ~/ 2; /*3*/
         if (index >= _suggestions.length) {
-          _suggestions.addAll(generateWordPairs().take(10)); /*4*/
+          _suggestions.addAll(generateWordPairs().take(20)); /*4*/
         }
         WordPair pair = _suggestions[index];
         final alreadySaved = _saved.contains(pair);
         return ListTile(
-          title: Text(
-            pair.asPascalCase,
-          ),
+          title: Text(pair.asPascalCase),
           trailing: Icon(
             alreadySaved ? Icons.favorite : Icons.favorite_border,
             color: alreadySaved ? Colors.red : null,
